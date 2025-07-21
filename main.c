@@ -45,7 +45,7 @@ int tokenize_at_response(const char* input, char output_tokens[][BUFFER_SIZE], i
         // 3. Sao chép token vào mảng kết quả nếu nó có nội dung
         if (token_len > 0) {
             // Đảm bảo không ghi tràn bộ đệm của token
-            size_t len_to_copy = (token_len < MAX_TOKEN_LEN) ? token_len : MAX_TOKEN_LEN - 1;
+            size_t len_to_copy = (token_len < BUFFER_SIZE) ? token_len : BUFFER_SIZE - 1;
             
             memcpy(output_tokens[token_count], line_start, len_to_copy);
             output_tokens[token_count][len_to_copy] = '\0'; // Đảm bảo kết thúc null
@@ -76,25 +76,25 @@ ResponseType_e Parse_Response_Token(const char* token)
     }
 
     // Lấy số lượng mục trong bảng tra cứu
-    int num_mappings = sizeof(response_map) / sizeof(response_map[0]);
+    int num_mappings = sizeof(response_table) / sizeof(response_table[0]);
 
     // Duyệt qua từng mục trong bảng
     for (int i = 0; i < num_mappings; i++)
     {
-        const char* expected_str = response_map[i].str_to_compare;
+        const char* expected_str = response_table[i].str_to_compare;
 
-        if (response_map[i].cmp_type == CMP_EXACT)
+        if (response_table[i].cmp_type == CMP_EXACT)
         {
             // So sánh chính xác
             if (strcmp(token, expected_str) == 0) {
-                return response_map[i].type; // Trả về loại nếu khớp
+                return response_table[i].type; // Trả về loại nếu khớp
             }
         }
         else // CMP_PREFIX
         {
             // So sánh tiền tố
             if (strncmp(token, expected_str, strlen(expected_str)) == 0) {
-                return response_map[i].type; // Trả về loại nếu khớp
+                return response_table[i].type; // Trả về loại nếu khớp
             }
         }
     }
@@ -106,11 +106,9 @@ ResponseType_e Parse_Response_Token(const char* token)
  //==========================RECEIVER======================================//
  void Lib_SIM_Setup(GenericReceiver_t* receiver, UART_HandleTypeDef* huart, Receiver_Callback_t callback)
 {
-	if (receiver != NULL && receiver->huart != NULL){
+	if (receiver != NULL && huart != NULL){
     	receiver->huart = huart;
-    	receiver->data_ready_callback = NULL; 
     	receiver->dma_buffer_idx = 0;
-    	
     	receiver->data_ready_callback = callback;
     	
     	__HAL_UART_ENABLE_IT(receiver->huart, UART_IT_IDLE);
@@ -154,8 +152,8 @@ void Receiver_IRQHandler(GenericReceiver_t* receiver)
        		for (int i = 0; i < count; i++)
        		{
        		size_t len = strlen(tokens[i]);
-           
-            if(!response_table[Parse_Response_Token(tokens[i])].handler(tokens[i])){
+            ResponseType_e type = Parse_Response_Token(tokens[i]);
+            if(response_table[type].handler && !response_table[type].handler(tokens[i])){ //kiểm tra null
                 receiver->data_ready_callback(tokens[i], len); //kiểm tra và lưu calib
                 }
        		}
@@ -179,54 +177,55 @@ void timeout(UART_HandleTypeDef* huart,volatile int *state_ptr,int value){
 }
 void connect_broker(UART_HandleTypeDef* huart){
     //1.
-    HAL_UART_Transmit(huart, "AT+CMQTTSTART", strlen("AT+CMQTTSTART"), 1000);
+    HAL_UART_Transmit(huart, "AT+CMQTTSTART\r\n", strlen("AT+CMQTTSTART\r\n"), 1000);
+    timeout(huart, &ouput_data.CMQTTSTART_data.index, 0);
     //2.
-    sprintf(com ,"AT+CMQTTACCQ=%d,\"%s\",%d",client_index,clientID,server_type);
+    sprintf(com ,"AT+CMQTTACCQ=%d,\"%s\",%d\r\n",client_index,clientID,server_type);
     HAL_UART_Transmit(huart,com, strlen(com), 1000);
+    timeout(huart, &ouput_data.no_data.index, 0);
     //3.
-    sprintf(com ,"AT+CMQTTCONNECT=%d,\"%s\",%d,%d",client_index,clientID,keepalive_time,clean_session);
+    sprintf(com ,"AT+CMQTTCONNECT=%d,\"%s\",%d,%d\r\n",client_index,clientID,keepalive_time,clean_session);
     HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout(&ouput_data.CMQTTCONNECT_data.state,0);
+    timeout(huart, &ouput_data.CMQTTCONNECT_data.state, 0);
 }
 
-void Send_broker(UART_HandleTypeDef* huart,const char* payload )
-{
-    //-----------------------------------------------------------------------------------------------------
-    //4.topic
-    sprintf(com ,"AT+CMQTTTOPIC=%d,%d",client_index,req_length);
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout(huart,ouput_data.no_data.index,0);
-    HAL_UART_Transmit(huart,topic,req_length, 1000);
-    //5.payload
-    sprintf(com ,"AT+CMQTTPAYLOAD=%d,%d",client_index,req_length);
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout(huart,ouput_data.no_data.index,0);
-    HAL_UART_Transmit(huart,payload,strlen(payload), 1000);
-    //6.publish
-    sprintf(com ,"AT+CMQTTPUB=%d,%d,0",client_index,qos);
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout(huart,ouput_data.no_data.index,0);   
+void Send_broker(UART_HandleTypeDef* huart, const char* payload) {
+    sprintf(com, "AT+CMQTTTOPIC=%d,%d\r\n", client_index, req_length);
+    HAL_UART_Transmit(huart, com, strlen(com), 1000);
+    timeout(huart, &ouput_data.no_data.index, 0);
+    HAL_UART_Transmit(huart, topic, req_length, 1000);
+    HAL_UART_Transmit(huart, "\r\n", 2, 1000); // Thêm \r\n sau topic
+    sprintf(com, "AT+CMQTTPAYLOAD=%d,%d\r\n", client_index, strlen(payload));
+    HAL_UART_Transmit(huart, com, strlen(com), 1000);
+    timeout(huart, &ouput_data.no_data.index, 0);
+    HAL_UART_Transmit(huart, payload, strlen(payload), 1000);
+    HAL_UART_Transmit(huart, "\r\n", 2, 1000); // Thêm \r\n sau payload
+    sprintf(com, "AT+CMQTTPUB=%d,%d,0\r\n", client_index, qos);
+    HAL_UART_Transmit(huart, com, strlen(com), 1000);
+    timeout(huart, &ouput_data.no_data.index, 0);
 }
 
 //=====================================send sms======================================================
 void connect_SMS(UART_HandleTypeDef* huart){
-    sprintf(com,"AT+CMGF=1");
+    sprintf(com,"AT+CMGF=1\r\n");
     HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    sprintf(com,"AT+CSCS=\"GSM\"");
+    sprintf(com,"AT+CSCS=\"GSM\"\r\n");
     HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout(huart,ouput_data.no_data.index,0); 
+    timeout(huart,&ouput_data.no_data.index,0); 
 }
-void Send_SMS(UART_HandleTypeDef* huart,char*phone){
-    sprintf(com ,"AT+CMGS=\"%s\"",phone);
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout(huart,ouput_data.no_data.index,0); 
+void Send_SMS(UART_HandleTypeDef* huart, char* phone, const char* message) {
+    sprintf(com, "AT+CMGS=\"%s\"\r\n", phone);
+    HAL_UART_Transmit(huart, com, strlen(com), 1000);
+    timeout(huart, &ouput_data.no_data.index, 0);
+    HAL_UART_Transmit(huart, message, strlen(message), 1000);
+    HAL_UART_Transmit(huart, "\x1A", 1, 1000); // Gửi Ctrl+Z
 }
 //=======================================handler=================================================================
 bool handle_Default(const char* token) {
 	return true;
 }
 bool handle_No_data(const char* token) {
-    if (strcmp(token,"<")==0 || strcmp(token,"OK")==0 || strcmp(token,"ERROR")==0){
+    if (strcmp(token,"> ")==0 || strcmp(token,"OK")==0 || strcmp(token,"ERROR")==0){
     ouput_data.no_data.index = 0;
     return true;
     } 
