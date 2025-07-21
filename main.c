@@ -8,7 +8,7 @@ bool received_flag = false;
 int req_length =strlen(topic); //độ dài chuỗi topic(byte)
 //================================================================================
 
-int tokenize_at_response(const char* input, char output_tokens[][MAX_TOKEN_LEN], int max_tokens)
+int tokenize_at_response(const char* input, char output_tokens[][BUFFER_SIZE], int max_tokens)
 {
     if (!input || !output_tokens) {
         return 0;
