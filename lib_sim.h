@@ -168,5 +168,4 @@ typedef struct {
 typedef void (*GenericEventHandler_t)(const Mag_ResponseData_t* response);
 Mag_ResponseData_t ouput_data;
 
-#endif
-sssssssssssssssssss
+#endif  
