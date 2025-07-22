@@ -148,15 +148,18 @@ void Receiver_IRQHandler(GenericReceiver_t* receiver)
         if (receiver->data_ready_callback != NULL && data_length > 0)
         {
 			int count = tokenize_at_response(buffer_to_process, tokens, MAX_TOKENS);
-			
+			if( count >= 2){
        		for (int i = 0; i < count; i++)
        		{
        		size_t len = strlen(tokens[i]);
             ResponseType_e type = Parse_Response_Token(tokens[i]);
+            
             if(response_table[type].handler && !response_table[type].handler(tokens[i])){ //kiểm tra null
                 receiver->data_ready_callback(tokens[i], len); //kiểm tra và lưu calib
                 }
        		}
+            
+            }
             //received_flag = true;
         }
     }
@@ -188,11 +191,14 @@ void connect_broker(UART_HandleTypeDef* huart){
     HAL_UART_Transmit(huart,com, strlen(com), 1000);
     timeout(huart, &ouput_data.CMQTTCONNECT_data.state, 0);
 }
-
-void Send_broker(UART_HandleTypeDef* huart, const char* payload) {
+void Send_cm_broker(UART_HandleTypeDef* huart, const char* payload) {
+    
+    
+}
+void Send_data_broker(UART_HandleTypeDef* huart, const char* payload) {
     sprintf(com, "AT+CMQTTTOPIC=%d,%d\r\n", client_index, req_length);
     HAL_UART_Transmit(huart, com, strlen(com), 1000);
-    timeout(huart, &ouput_data.no_data.index, 0);
+    //timeout(huart, &ouput_data.no_data.index, 0);
     HAL_UART_Transmit(huart, topic, req_length, 1000);
     HAL_UART_Transmit(huart, "\r\n", 2, 1000); // Thêm \r\n sau topic
     sprintf(com, "AT+CMQTTPAYLOAD=%d,%d\r\n", client_index, strlen(payload));
@@ -213,7 +219,7 @@ void connect_SMS(UART_HandleTypeDef* huart){
     HAL_UART_Transmit(huart,com, strlen(com), 1000);
     timeout(huart,&ouput_data.no_data.index,0); 
 }
-void Send_SMS(UART_HandleTypeDef* huart, char* phone, const char* message) {
+void Send_message_SMS(UART_HandleTypeDef* huart, char* phone, const char* message) {
     sprintf(com, "AT+CMGS=\"%s\"\r\n", phone);
     HAL_UART_Transmit(huart, com, strlen(com), 1000);
     timeout(huart, &ouput_data.no_data.index, 0);
