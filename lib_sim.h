@@ -30,6 +30,14 @@ void Send_broker(UART_HandleTypeDef* huart,const char* payload);
 #define qos 0
 #define PHONE_NUMBER "0000000000"
 // ==================================================RRECEIVER===================================================================
+//
+
+typedef struct{
+    int status;
+    char command;
+} match_table
+
+
 typedef void (*Receiver_Callback_t)(uint8_t*data, uint8_t len); //dinh nghia con tro ham
 typedef struct{
 	UART_HandleTypeDef* huart;

@@ -5,7 +5,7 @@ char buffer_response[BUFFER_SIZE];
 char buffer_calib[BUFFER_SIZE];
 char tokens[MAX_TOKENS][BUFFER_SIZE];
 bool received_flag = false;
-int req_length =strlen(topic); //độ dài chuỗi topic(byte)
+int req_length =strlen(topic); 
 //================================================================================
 
 int tokenize_at_response(const char* input, char output_tokens[][BUFFER_SIZE], int max_tokens)
@@ -17,14 +17,11 @@ int tokenize_at_response(const char* input, char output_tokens[][BUFFER_SIZE], i
     int token_count = 0;
     const char* current_pos = input;
 
-    while (*current_pos != '\0' && token_count < max_tokens)
-    {
-        // 1. Bỏ qua các ký tự \r, \n hoặc khoảng trắng ở đầu
+    while (*current_pos != '\0' && token_count < max_tokens){
+    
         while (*current_pos != '\0' && (*current_pos == '\r' || *current_pos == '\n')) {
             current_pos++;
         }
-
-        // Nếu đã đến cuối chuỗi thì dừng lại
         if (*current_pos == '\0') {
             break;
         }
@@ -163,6 +160,14 @@ void Receiver_IRQHandler(GenericReceiver_t* receiver)
             //received_flag = true;
         }
     }
+}
+match_table matching_command(char *token){
+
+
+
+
+
+
 }
 //====================================SEND_broker===============================================================
 void timeout(UART_HandleTypeDef* huart,volatile int *state_ptr,int value){
