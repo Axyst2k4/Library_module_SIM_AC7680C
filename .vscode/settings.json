@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "lib_sim.h": "c"
+        "lib_sim.h": "c",
+        "stdio.h": "c"
     }
 }
