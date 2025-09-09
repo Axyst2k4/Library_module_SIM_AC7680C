@@ -1,4 +1,168 @@
-#include "Rx_lib_SIM"
+#include "Rx_lib_SIM.h"
+
+char com[50];
+char buffer_response[BUFFER_SIZE];
+char buffer_calib[BUFFER_SIZE];
+char tokens[MAX_TOKENS][BUFFER_SIZE];
+bool received_flag = false;
+int req_length =strlen(topic); 
+//=====================================work_flow===========================================
+
+//=====================================handle_data===========================================
+
+int tokenize_at_response(const char* input, char output_tokens[][BUFFER_SIZE], int max_tokens)
+{
+    if (!input || !output_tokens) {
+        return 0;
+    }
+
+    int token_count = 0;
+    const char* current_pos = input;
+
+    while (*current_pos != '\0' && token_count < max_tokens){
+    
+        while (*current_pos != '\0' && (*current_pos == '\r' || *current_pos == '\n')) {
+            current_pos++;
+        }
+        if (*current_pos == '\0') {
+            break;
+        }
+
+        // 2. Tìm điểm kết thúc của dòng hiện tại (\r\n)
+        const char* end_of_line = strstr(current_pos, "\r\n");
+        const char* line_start = current_pos;
+        size_t token_len = 0;
+
+        if (end_of_line != NULL) {
+            // Nếu tìm thấy \r\n, tính độ dài của token
+            token_len = end_of_line - line_start;
+        } else {
+            // Nếu không, lấy phần còn lại của chuỗi làm token cuối cùng
+            token_len = strlen(line_start);
+        }
+
+        // 3. Sao chép token vào mảng kết quả nếu nó có nội dung
+        if (token_len > 0) {
+            // Đảm bảo không ghi tràn bộ đệm của token
+            size_t len_to_copy = (token_len < BUFFER_SIZE) ? token_len : BUFFER_SIZE - 1;
+            
+            memcpy(output_tokens[token_count], line_start, len_to_copy);
+            output_tokens[token_count][len_to_copy] = '\0'; // Đảm bảo kết thúc null
+            
+            token_count++;
+        }
+        
+        // 4. Di chuyển con trỏ đến sau \r\n để chuẩn bị cho vòng lặp tiếp theo
+        if (end_of_line != NULL) {
+            current_pos = end_of_line + 2;
+        } else {
+            // Đã đến cuối chuỗi
+            break;
+        }
+    }
+
+    return token_count;
+}
+
+
+/*===================================================================================*/
+
+
+ResponseType_e Parse_Response_Token(const char* token)
+{
+    if (token == NULL) {
+        return RESPONSE_TYPE_UNKNOWN;
+    }
+
+    // Lấy số lượng mục trong bảng tra cứu
+    int num_mappings = sizeof(response_table) / sizeof(response_table[0]);
+
+    // Duyệt qua từng mục trong bảng
+    for (int i = 0; i < num_mappings; i++)
+    {
+        const char* expected_str = response_table[i].str_to_compare;
+
+        if (response_table[i].cmp_type == CMP_EXACT)
+        {
+            // So sánh chính xác
+            if (strcmp(token, expected_str) == 0) {
+                return response_table[i].type; // Trả về loại nếu khớp
+            }
+        }
+        else // CMP_PREFIX
+        {
+            // So sánh tiền tố
+            if (strncmp(token, expected_str, strlen(expected_str)) == 0) {
+                return response_table[i].type; // Trả về loại nếu khớp
+            }
+        }
+    }
+
+    // Nếu không tìm thấy kết quả khớp nào sau khi duyệt hết bảng
+    return RESPONSE_TYPE_UNKNOWN;
+}
+
+ 
+
+void Receiver_IRQHandler(GenericReceiver_t* receiver)
+{
+	uint16_t data_length = 0;
+	uint8_t* buffer_to_process = NULL;
+    
+    if (__HAL_UART_GET_FLAG(receiver->huart, UART_FLAG_IDLE) != RESET)
+    {
+        __HAL_UART_CLEAR_IDLEFLAG(receiver->huart);
+
+        HAL_UART_DMAStop(receiver->huart);
+
+        if (receiver->dma_buffer_idx == 0)
+        {
+            data_length = BUFFER_SIZE - __HAL_DMA_GET_COUNTER(receiver->huart->hdmarx);
+            buffer_to_process = receiver->buffer_A;
+            receiver->dma_buffer_idx = 1;
+            HAL_UART_Receive_DMA(receiver->huart, receiver->buffer_B, BUFFER_SIZE);
+        }
+        else 
+        {
+            
+            data_length = BUFFER_SIZE - __HAL_DMA_GET_COUNTER(receiver->huart->hdmarx);
+            buffer_to_process = receiver->buffer_B;
+            receiver->dma_buffer_idx = 0;
+            HAL_UART_Receive_DMA(receiver->huart, receiver->buffer_A, BUFFER_SIZE);
+        }
+
+        if (receiver->data_ready_callback != NULL && data_length > 0)
+        {
+			int count = tokenize_at_response(buffer_to_process, tokens, MAX_TOKENS);
+			if( count >= 2){
+       		for (int i = 0; i < count; i++)
+       		{
+       		size_t len = strlen(tokens[i]);
+            ResponseType_e type = Parse_Response_Token(tokens[i]);
+            
+            if(response_table[type].handler && !response_table[type].handler(tokens[i])){ //kiểm tra null
+                receiver->data_ready_callback(tokens[i], len); //kiểm tra và lưu calib
+                }
+       		}
+            }
+            
+            //received_flag = true;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 bool handle_Default(const char* token) {
 	return true;
