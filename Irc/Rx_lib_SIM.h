@@ -14,7 +14,6 @@ typedef struct{
 typedef void (*Receiver_Callback_t)(uint8_t*data, uint8_t len); //dinh nghia con tro ham
 typedef struct{
 	UART_HandleTypeDef* huart;
-	Receiver_Callback_t   data_ready_callback;
 	uint8_t buffer_A[BUFFER_SIZE];
 	uint8_t buffer_B[BUFFER_SIZE];
 	uint8_t dma_buffer_idx; //0=A,1=B
@@ -57,7 +56,7 @@ typedef struct {
 } ResponseMapping_t;
 
 static const ResponseMapping_t response_table[] = {
-    // String,         Enum Type,                 Cmp Type,   Handler Function
+    // String,         Enum Type,              Handler Function
     {"OK",          RESPONSE_TYPE_OK,            handle_No_data},
     {"ERROR",       RESPONSE_TYPE_ERROR,         handle_No_data},
     {"> ",          RESPONSE_TYPE_PROMPT,        handle_No_data},
