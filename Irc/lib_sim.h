@@ -1,5 +1,4 @@
-#ifndef _MODULE_SIM_H_
-#define _MODULE_SIM_H_
+
 
 #include "stm32f1xx_hal.h"  
 #include "stdio.h"
@@ -7,7 +6,7 @@
 #include <string.h>
 
 // ==================================================RRECEIVER===================================================================
-void Lib_SIM_Setup(GenericReceiver_t* receiver, UART_HandleTypeDef* huart, Receiver_Callback_t data_handler_callback);
+void Lib_SIM_Setup(GenericReceiver_t* receiver, UART_HandleTypeDef* huart, Receiver_Callback_t data_handler_callback); //gọi ở main khi khởi động
 void Receiver_IRQHandler(GenericReceiver_t* receiver); //goi ham nay o ham ISR
 void Send_SMS(char*phone);
 void Send_broker(UART_HandleTypeDef* huart,const char* payload);

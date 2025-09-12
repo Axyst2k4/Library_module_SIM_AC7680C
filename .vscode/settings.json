@@ -2,6 +2,7 @@
     "files.associations": {
         "lib_sim.h": "c",
         "stdio.h": "c",
-        "rx_lib_sim.h": "c"
+        "rx_lib_sim.h": "c",
+        "setup_sim.h": "c"
     }
 }
