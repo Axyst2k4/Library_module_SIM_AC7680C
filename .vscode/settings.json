@@ -5,6 +5,8 @@
         "rx_lib_sim.h": "c",
         "setup_sim.h": "c",
         "cstdint": "c",
-        "random": "c"
+        "random": "c",
+        "algorithm": "c",
+        "format": "c"
     }
 }
