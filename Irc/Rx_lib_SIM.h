@@ -1,9 +1,11 @@
 #ifndef _RX_LIB_SIM_H_
 #define _RX_LIB_SIM_H_
 
-#include "stm32f1xx_hal.h"  
+#include "stm32f1xx_hal.h"
+#include 'string.h'  
 // ==================================================RRECEIVER===================================================================
 //
+#define BUFFER_SIZE 256
 
 typedef struct{
     int status;
@@ -17,7 +19,10 @@ typedef struct{
 	uint8_t buffer_A[BUFFER_SIZE];
 	uint8_t buffer_B[BUFFER_SIZE];
 	uint8_t dma_buffer_idx; //0=A,1=B
-} GenericReceiver_t;
+    uint8_t result_data[BUFFER_SIZE][BUFFER_SIZE]
+    int flag_recei = 0;
+    int token_count;
+} receiver_t;
 
 
 // Enum định nghĩa các loại phản hồi
@@ -66,7 +71,7 @@ static const ResponseMapping_t response_table[] = {
     {"+CMQTTCONNECT:",    RESPONSE_TYPE_CMQTTCONNECT,       handle_CMQTTCONNECT}
 };
 
-//response_handler_table[response_type](current_token); cách dùng trong maim
+
 
 //========================================định nghĩa cho các hàm handler============================================
 typedef struct {
