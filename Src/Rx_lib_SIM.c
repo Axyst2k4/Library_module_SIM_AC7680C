@@ -7,7 +7,7 @@ char buffer_calib[BUFFER_SIZE];
 bool received_flag = false;
 int req_length =strlen(topic); 
 
-volatile uint32_t time = 1000;
+
 //=====================================work_flow===========================================
 
 //=====================================handle_data===========================================
@@ -43,8 +43,14 @@ void Receiver_IRQHandler(void)
         data_length = BUFFER_SIZE - __HAL_DMA_GET_COUNTER(g_receiver.huart->hdmarx); //ERROR
         HAL_UART_Receive_DMA(g_receiver.huart,g_receiver.buffer_A, BUFFER_SIZE);
         //check
-        g_receiver.token_count = filter_data(g_receiver.buffer_A,g_receiver.result_data,BUFFER_SIZE);
-        
+        g_receiver.response_count = filter_data(g_receiver.buffer_A,g_receiver.result_data,BUFFER_SIZE);
+        for (int i = 0; i <= g_receiver.resp_count; i++)
+        {
+            index_cmd[i] = Check_Type_Response(g_receiver.result_data[i]);
+            ResponseType_e type = index_cmd[i];
+            response_table[type].handler(g_receiver.result_data[i]);
+        }
+        clear();
         }
     }
 
@@ -76,20 +82,15 @@ int Filter_Data(uint8_t * input,uint8_t output_tokens[][BUFFER_SIZE], int max_to
         } else {
             token_len = strlen(line_start);
         }
-
-        // 3. Sao chép token vao mang
         if (token_len > 0) {
-            // Đảm bảo không ghi tràn bộ đệm của token
             size_t len_to_copy = (token_len < BUFFER_SIZE) ? token_len : BUFFER_SIZE - 1;
             
             memcpy(output_tokens[token_count], line_start, len_to_copy);
-            output_tokens[token_count][len_to_copy] = '\0'; // Đảm bảo kết thúc null
+            output_tokens[token_count][len_to_copy] = '\0'; 
             
             token_count++;
             
         }
-        
-        // 4. Di chuyển con trỏ đến sau \r\n để chuẩn bị cho vòng lặp tiếp theo
         if (end_of_line != NULL) {
             current_pos = end_of_line + 2;
         } else {
@@ -126,54 +127,52 @@ ResponseType_e Check_Type_Response(const char* token)
             }
         }
     }
-
-
     return RESPONSE_TYPE_UNKNOWN;
 }
 
-void Handle_Data(void){
-        for (int i = 0; i <= g_receiver.token_count; i++)
-        {
-            g_index_cmd[i] = Check_Type_Response(g_receiver.result_data[i]);
-            ResponseType_e type = g_index_cmd[i];
-            response_table[type].handler(g_receiver.result_data[i]);
-        }
-}
-     
-
+  void clear(void){
+    memset(g_receiver.buffer_A, 0, sizeof(g_receiver.buffer_A));
+    memset(g_receiver.result_data, 0, sizeof(g_receiver.result_data));
+  }
 /*===================================================================================*/
  
 void SysTick_Init(volatile uint32_t set_time) {
-    // Cấu hình SysTick tick mỗi 1ms (HCLK = 72 MHz)
+    g_receiver.tickCount = 0;
     SysTick->LOAD = 72000 - 1; // 72 MHz / 1000 = 72,000 cycles cho 1ms
     SysTick->VAL = 0;          // Reset counter
-    time = set_time;
+    g_receiver.timeset_count = set_time;
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | // HCLK
                     SysTick_CTRL_TICKINT_Msk |   // Bật ngắt
                     SysTick_CTRL_ENABLE_Msk;     // Bật SysTick
     
 }
 
-void SysTick_Handler(volatile uint32_t time) {
-    volatile uint32_t tickCount++;
-    if (tickCount < time && g_receiver.token_count != 0 ) { 
-        
-    } else {
-    tickCount = 0; // Reset đếm
-    Error_Connect();
+ void SysTick_Handler(void) {
+    g_receiver.tickCount++;
+    if (g_receiver.response_count != 0 ) { 
+        SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+
+    } else if (g_receiver.tickCount >= g_receiver.timeset_count ){
+        g_receiver.tickCount = 0; // Reset đếm
+        SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+        Error_Connect();
     }
 }
-void Wait_Response(volatile uint32_t set_time){
+void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time){
     SysTick_Init(set_time);
-
-
+    for(int i = 0; i<g_receiver.response_count;i++){
+        if(g_receiver.index_cmd == response_correct ){
+            return;
+        }
+    }
+    g_state = g_state - 1; 
 }
  void Error_Connect(void){
-    
+
  }
 
 
-
+dasdsad
 
 
 
