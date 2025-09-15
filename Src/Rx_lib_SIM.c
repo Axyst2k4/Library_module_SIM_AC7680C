@@ -163,16 +163,17 @@ void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time
     for(int i = 0; i<g_receiver.response_count;i++){
         if(g_receiver.index_cmd == response_correct ){
             return;
+        } else if( i == (g_receiver.response_count-1)){
+            g_state = g_state - 1; 
         }
     }
-    g_state = g_state - 1; 
+    
 }
  void Error_Connect(void){
 
  }
 
 
-dasdsad
 
 
 
