@@ -38,13 +38,6 @@ typedef struct{
 
 
 typedef void (*Receiver_Callback_t)(uint8_t*data, uint8_t len); //dinh nghia con tro ham
-typedef struct{
-	UART_HandleTypeDef* huart;
-	Receiver_Callback_t   data_ready_callback;
-	uint8_t buffer_A[BUFFER_SIZE];
-	uint8_t buffer_B[BUFFER_SIZE];
-	uint8_t dma_buffer_idx; //0=A,1=B
-} GenericReceiver_t;
 
 
 // Enum định nghĩa các loại phản hồi
