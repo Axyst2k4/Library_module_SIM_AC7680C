@@ -8,6 +8,7 @@
         "random": "c",
         "algorithm": "c",
         "format": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "string.h": "c"
     }
 }
