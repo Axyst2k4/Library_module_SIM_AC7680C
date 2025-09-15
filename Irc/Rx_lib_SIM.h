@@ -2,11 +2,11 @@
 #define _RX_LIB_SIM_H_
 
 #include "stm32f1xx_hal.h"
-#include 'string.h'  
+#include "string.h"  
 // ==================================================RRECEIVER===================================================================
 //
 #define BUFFER_SIZE 256
-
+void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time);
 typedef struct{
     int status;
     char command;
@@ -19,12 +19,22 @@ typedef struct{
 	uint8_t buffer_A[BUFFER_SIZE];
 	uint8_t buffer_B[BUFFER_SIZE];
 	uint8_t dma_buffer_idx; //0=A,1=B
-    uint8_t result_data[BUFFER_SIZE][BUFFER_SIZE]
-    int flag_recei = 0;
-    int token_count;
-} receiver_t;
+    uint8_t result_data[BUFFER_SIZE][BUFFER_SIZE];
+    int response_count;
+    ResponseType_e index_cmd[100]; 
+    volatile uint32_t tickCount;
+    volatile uint32_t timeset_count;
+    
+} GenericReceiver_t;
 
-
+GenericReceiver_t g_receiver = {
+    .huart = &huart1,       // Gán handle của UART1
+    .dma_buffer_idx = 0,
+    .response_count = 0,
+    .tickCount =0,
+    .timeset_count = 1000,
+    
+};
 // Enum định nghĩa các loại phản hồi
 typedef enum {
     RESPONSE_TYPE_UNKNOWN   ,
@@ -53,12 +63,12 @@ typedef enum {
 
 
 typedef void (*ResponseHandler_t)(const char* token);
-
 typedef struct {
     const char* str_to_compare; // Chuỗi cần so sánh
     ResponseType_e    type;
     ResponseHandler_t handler
 } ResponseMapping_t;
+
 
 static const ResponseMapping_t response_table[] = {
     // String,         Enum Type,              Handler Function
