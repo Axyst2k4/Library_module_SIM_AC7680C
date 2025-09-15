@@ -42,8 +42,9 @@ typedef enum {
     RESPONSE_TYPE_ERROR     ,
     RESPONSE_TYPE_PROMPT    ,
 
-    // Phản hồi mạng & trạng thái chung
-    RESPONSE_TYPE_CSQ      ,
+    //CONNECTMQTT
+	RESPONSE_CMQTTSTART,
+    RESPONSE_      ,
     RESPONSE_TYPE_CREG      ,
 
     // Phản hồi lỗi SMS
@@ -119,5 +120,6 @@ typedef struct {
 } Mag_ResponseData_t;
 typedef void (*GenericEventHandler_t)(const Mag_ResponseData_t* response);
 Mag_ResponseData_t ouput_data;
+
 
 #endif 
