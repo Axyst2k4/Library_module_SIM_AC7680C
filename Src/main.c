@@ -8,159 +8,7 @@ bool received_flag = false;
 int req_length =strlen(topic); 
 //================================================================================
 
-int tokenize_at_response(const char* input, char output_tokens[][BUFFER_SIZE], int max_tokens)
-{
-    if (!input || !output_tokens) {
-        return 0;
-    }
 
-    int token_count = 0;
-    const char* current_pos = input;
-
-    while (*current_pos != '\0' && token_count < max_tokens){
-    
-        while (*current_pos != '\0' && (*current_pos == '\r' || *current_pos == '\n')) {
-            current_pos++;
-        }
-        if (*current_pos == '\0') {
-            break;
-        }
-
-        // 2. Tìm điểm kết thúc của dòng hiện tại (\r\n)
-        const char* end_of_line = strstr(current_pos, "\r\n");
-        const char* line_start = current_pos;
-        size_t token_len = 0;
-
-        if (end_of_line != NULL) {
-            // Nếu tìm thấy \r\n, tính độ dài của token
-            token_len = end_of_line - line_start;
-        } else {
-            // Nếu không, lấy phần còn lại của chuỗi làm token cuối cùng
-            token_len = strlen(line_start);
-        }
-
-        // 3. Sao chép token vào mảng kết quả nếu nó có nội dung
-        if (token_len > 0) {
-            // Đảm bảo không ghi tràn bộ đệm của token
-            size_t len_to_copy = (token_len < BUFFER_SIZE) ? token_len : BUFFER_SIZE - 1;
-            
-            memcpy(output_tokens[token_count], line_start, len_to_copy);
-            output_tokens[token_count][len_to_copy] = '\0'; // Đảm bảo kết thúc null
-            
-            token_count++;
-        }
-        
-        // 4. Di chuyển con trỏ đến sau \r\n để chuẩn bị cho vòng lặp tiếp theo
-        if (end_of_line != NULL) {
-            current_pos = end_of_line + 2;
-        } else {
-            // Đã đến cuối chuỗi
-            break;
-        }
-    }
-
-    return token_count;
-}
-
-
-/*===================================================================================*/
-
-
-ResponseType_e Parse_Response_Token(const char* token)
-{
-    if (token == NULL) {
-        return RESPONSE_TYPE_UNKNOWN;
-    }
-
-    // Lấy số lượng mục trong bảng tra cứu
-    int num_mappings = sizeof(response_table) / sizeof(response_table[0]);
-
-    // Duyệt qua từng mục trong bảng
-    for (int i = 0; i < num_mappings; i++)
-    {
-        const char* expected_str = response_table[i].str_to_compare;
-
-        if (response_table[i].cmp_type == CMP_EXACT)
-        {
-            // So sánh chính xác
-            if (strcmp(token, expected_str) == 0) {
-                return response_table[i].type; // Trả về loại nếu khớp
-            }
-        }
-        else // CMP_PREFIX
-        {
-            // So sánh tiền tố
-            if (strncmp(token, expected_str, strlen(expected_str)) == 0) {
-                return response_table[i].type; // Trả về loại nếu khớp
-            }
-        }
-    }
-
-    // Nếu không tìm thấy kết quả khớp nào sau khi duyệt hết bảng
-    return RESPONSE_TYPE_UNKNOWN;
-}
-
- //==========================RECEIVER======================================//
- void Lib_SIM_Setup(GenericReceiver_t* receiver, UART_HandleTypeDef* huart, Receiver_Callback_t callback)
-{
-	if (receiver != NULL && huart != NULL){
-    	receiver->huart = huart;
-    	receiver->dma_buffer_idx = 0;
-    	receiver->data_ready_callback = callback;
-    	
-    	__HAL_UART_ENABLE_IT(receiver->huart, UART_IT_IDLE);
-		HAL_UART_Receive_DMA(receiver->huart, receiver->buffer_A,BUFFER_SIZE);
-        connect_broker(huart);
-        connect_SMS(huart);
-	}
-}
-
-void Receiver_IRQHandler(GenericReceiver_t* receiver)
-{
-	uint16_t data_length = 0;
-	uint8_t* buffer_to_process = NULL;
-    
-    if (__HAL_UART_GET_FLAG(receiver->huart, UART_FLAG_IDLE) != RESET)
-    {
-        __HAL_UART_CLEAR_IDLEFLAG(receiver->huart);
-
-        HAL_UART_DMAStop(receiver->huart);
-
-        if (receiver->dma_buffer_idx == 0)
-        {
-            data_length = BUFFER_SIZE - __HAL_DMA_GET_COUNTER(receiver->huart->hdmarx);
-            buffer_to_process = receiver->buffer_A;
-            receiver->dma_buffer_idx = 1;
-            HAL_UART_Receive_DMA(receiver->huart, receiver->buffer_B, BUFFER_SIZE);
-        }
-        else 
-        {
-            
-            data_length = BUFFER_SIZE - __HAL_DMA_GET_COUNTER(receiver->huart->hdmarx);
-            buffer_to_process = receiver->buffer_B;
-            receiver->dma_buffer_idx = 0;
-            HAL_UART_Receive_DMA(receiver->huart, receiver->buffer_A, BUFFER_SIZE);
-        }
-
-        if (receiver->data_ready_callback != NULL && data_length > 0)
-        {
-			int count = tokenize_at_response(buffer_to_process, tokens, MAX_TOKENS);
-			if( count >= 2){
-       		for (int i = 0; i < count; i++)
-       		{
-       		size_t len = strlen(tokens[i]);
-            ResponseType_e type = Parse_Response_Token(tokens[i]);
-            
-            if(response_table[type].handler && !response_table[type].handler(tokens[i])){ //kiểm tra null
-                receiver->data_ready_callback(tokens[i], len); //kiểm tra và lưu calib
-                }
-       		}
-            }
-            
-            //received_flag = true;
-        }
-    }
-}
 match_table matching_command(char *token){
 
 
@@ -184,37 +32,8 @@ void timeout(UART_HandleTypeDef* huart,volatile int *state_ptr,int value){
     }
 }
 
-void timeout_module(UART_HandleTypeDef* huart,volatile int *state_ptr,int value, char *com){
-    bool connected = false; 
-    uint32_t start_time = HAL_GetTick();
-    while ((HAL_GetTick() - start_time) < 1000){
-        if (*state_ptr == value) {
-        connected = true;
-        break; 
-        }
-    }
-     if (!connected){
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    }
-}
 
-void connect_broker(UART_HandleTypeDef* huart){
-    //1.
-    HAL_UART_Transmit(huart, "AT+CMQTTSTART\r\n", strlen("AT+CMQTTSTART\r\n"), 1000);
-    timeout(huart, &ouput_data.CMQTTSTART_data.index, 0);
-    //2.
-    sprintf(com ,"AT+CMQTTACCQ=%d,\"%s\",%d\r\n",client_index,clientID,server_type);
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout_module(huart, &ouput_data.no_data.index, 0,com);
-    //3.
-    sprintf(com ,"AT+CMQTTCONNECT=%d,\"%s\",%d,%d\r\n",client_index,clientID,keepalive_time,clean_session);
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout(huart, &ouput_data.CMQTTCONNECT_data.state, 0);
-}
-void Send_cm_broker(UART_HandleTypeDef* huart, const char* comman) {
-    HAL_UART_Transmit(huart, comman, strlen(comman), 1000);
-    timeout(huart, &ouput_data.no_data.index, 0);
-}
+
 
 
 void Send_data_broker(UART_HandleTypeDef* huart, const char* payload) {
@@ -234,13 +53,7 @@ void Send_data_broker(UART_HandleTypeDef* huart, const char* payload) {
 }
 
 //=====================================send sms======================================================
-void connect_SMS(UART_HandleTypeDef* huart){
-    sprintf(com,"AT+CMGF=1\r\n");
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    sprintf(com,"AT+CSCS=\"GSM\"\r\n");
-    HAL_UART_Transmit(huart,com, strlen(com), 1000);
-    timeout_module(huart, &ouput_data.no_data.index, 0,com);
-}
+
 void Send_message_SMS(UART_HandleTypeDef* huart, char* phone, const char* message) {
     sprintf(com, "AT+CMGS=\"%s\"\r\n", phone);
     HAL_UART_Transmit(huart, com, strlen(com), 1000);

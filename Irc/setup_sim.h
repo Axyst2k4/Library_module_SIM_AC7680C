@@ -12,4 +12,4 @@
 
 #define qos 0
 #define PHONE_NUMBER "0000000000"
-char com[256]; askjsafdjklasjdf
+char com[256]; 

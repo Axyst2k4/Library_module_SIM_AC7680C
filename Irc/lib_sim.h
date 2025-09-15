@@ -2,7 +2,6 @@
 
 #include "stm32f1xx_hal.h"  
 #include "stdio.h"
-#include <stdbool.h>
 #include <string.h>
 
 // ==================================================RRECEIVER===================================================================
@@ -17,17 +16,7 @@ void Send_broker(UART_HandleTypeDef* huart,const char* payload);
 #define BUFFER_SIZE      	256
 #define MAX_TOKENS			100
 
-//------------------------------------------------connect_broker------------------------------------------------------------------
-#define client_index 0
-#define clientID "1234"
-#define server_type 0
-#define server_addr "tcp://<địa chỉ>:<port>"
-#define keepalive_time 600
-#define clean_session 1
-#define topic "abc"
 
-#define qos 0
-#define PHONE_NUMBER "0000000000"
 // ==================================================RRECEIVER===================================================================
 //
 
