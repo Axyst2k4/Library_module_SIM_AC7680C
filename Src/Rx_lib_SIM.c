@@ -153,15 +153,15 @@ void SysTick_Init(volatile uint32_t set_time) {
         SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
     } else if (g_receiver.tickCount >= g_receiver.timeset_count ){
-        g_receiver.tickCount = 0; // Reset đếm
+        
         SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-        Error_Connect();
+    
     }
 }
 void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time){
     SysTick_Init(set_time);
     for(int i = 0; i<g_receiver.response_count;i++){
-        if(g_receiver.index_cmd == response_correct ){
+        if(g_receiver.index_cmd[i] == response_correct ){
             return;
         } else if( i == (g_receiver.response_count-1)){
             g_state = g_state - 1; 
