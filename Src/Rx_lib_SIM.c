@@ -158,18 +158,19 @@ void SysTick_Init(volatile uint32_t set_time) {
     
     }
 }
-void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time){
+void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time, UART_HandleTypeDef* huart){
     SysTick_Init(set_time);
-    if (g_receiver.response_count !=0){
+    if (g_receiver.response_count !=0){ //response not correct
         for(int i = 0; i < g_receiver.response_count;i++){
             if(g_receiver.index_cmd[i] == response_correct ){
                 return;
             } else if( i == (g_receiver.response_count-1)){
-                g_state = g_state - 1; 
+                g_state = g_state -  1;  
             }
         }
     } else { //Timeout
-        
+        Lib_SIM_Setup(huart);
+
     }
 }
  void Error_Connect(void){
