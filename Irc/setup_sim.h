@@ -13,3 +13,5 @@
 #define qos 0
 #define PHONE_NUMBER "0000000000"
 char com[256]; 
+
+void Lib_SIM_Setup();

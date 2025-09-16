@@ -19,7 +19,7 @@ typedef enum {
 	RESPONSE_SMS_2,  
 	
 	// send sms
-
+	STATE_ERROR,
 
 
 } SimMachineState_t;
@@ -32,7 +32,8 @@ int g_state_count;
 void Connect_broker(UART_HandleTypeDef* huart){
 	g_state = STATE_MQTT_1;
 	g_state_count = 0;
-	for(g_state_count;g_state_count < 6;g_state_count ++)
+	int loop = 6; 
+	for(g_state_count;g_state_count < loop;g_state_count ++)
 	{
 	switch(g_state){
 		case STATE_MQTT_1:
@@ -40,8 +41,8 @@ void Connect_broker(UART_HandleTypeDef* huart){
 			g_state = RESPONSE_MQTT_1;
 			break;
 		case RESPONSE_MQTT_1:
-			Wait_Response( RESPONSE_TYPE_OK,2000);
-			Wait_Response( RESPONSE_TYPE_CMQTTSTART,10000);
+			loop += Wait_Response( RESPONSE_TYPE_OK,2000,huart);
+			loop += Wait_Response( RESPONSE_TYPE_CMQTTSTART,10000,huart);
 			g_state = STATE_MQTT_2;
 			break;
 		case STATE_MQTT_2:
@@ -50,7 +51,7 @@ void Connect_broker(UART_HandleTypeDef* huart){
 			g_state = RESPONSE_MQTT_2;
 			break;
 		case RESPONSE_MQTT_2:
-			Wait_Response( RESPONSE_TYPE_OK,2000);
+			loop += Wait_Response( RESPONSE_TYPE_OK,2000,huart);
 			g_state = STATE_MQTT_3;
 			break;
 		case STATE_MQTT_3:
@@ -59,8 +60,13 @@ void Connect_broker(UART_HandleTypeDef* huart){
 			g_state = RESPONSE_MQTT_3;
 			break;
 		case RESPONSE_MQTT_3:
-			Wait_Response( RESPONSE_TYPE_OK,2000);
-			Wait_Response( RESPONSE_TYPE_CMQTTCONNECT,10000);
+			loop += Wait_Response( RESPONSE_TYPE_OK,2000,huart);
+			loop += Wait_Response( RESPONSE_TYPE_CMQTTCONNECT,10000,huart);
+			g_state = STATE_IDLE;
+			break;
+		case STATE_ERROR:
+			Lib_SIM_Setup(huart);
+			g_state = STATE_MQTT_1;
 			break;
 		}
 		
@@ -77,14 +83,14 @@ void Connect_SMS(UART_HandleTypeDef* huart){
 			HAL_UART_Transmit(huart,com, strlen(com), 1000);
 			g_state = RESPONSE_SMS_1;
 		case RESPONSE_SMS_1:
-			Wait_Response( RESPONSE_TYPE_OK,2000);
+			Wait_Response( RESPONSE_TYPE_OK,2000,huart);
 			g_state = STATE_SMS_2;
 		case STATE_SMS_2:
 			sprintf(com,"AT+CSCS=\"GSM\"\r\n");
 			HAL_UART_Transmit(huart,com, strlen(com), 1000);
 			g_state = RESPONSE_SMS_2;
 		case RESPONSE_SMS_2:
-			Wait_Response( RESPONSE_TYPE_OK,2000);
+			Wait_Response( RESPONSE_TYPE_OK,2000,huart);
 			return;
 		}
 	}

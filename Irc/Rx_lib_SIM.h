@@ -1,11 +1,16 @@
-<<<<<<< HEAD
+
 #ifndef _RX_LIB_SIM_H_
 #define _RX_LIB_SIM_H_
 
 #include "stm32f1xx_hal.h"
 #include "string.h"  
-// ==================================================RRECEIVER===================================================================
-//
+#include "setup_sim.h"
+char com[50];
+char buffer_response[BUFFER_SIZE];
+char buffer_calib[BUFFER_SIZE];
+
+bool received_flag = false;
+int req_length =strlen(topic); 
 #define BUFFER_SIZE 256
 void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time);
 typedef struct{
