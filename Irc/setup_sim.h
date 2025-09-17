@@ -15,3 +15,4 @@
 char com[256]; 
 
 void Lib_SIM_Setup();
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
