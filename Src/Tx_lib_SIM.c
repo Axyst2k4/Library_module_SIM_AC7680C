@@ -7,3 +7,7 @@ void Tx_data(){
     }
 }
 }
+void Send_broker(UART_HandleTypeDef* huart, const char* comman) {
+    HAL_UART_Transmit(huart, comman, strlen(comman), 1000);
+    timeout(huart, &ouput_data.no_data.index, 0);
+	}
