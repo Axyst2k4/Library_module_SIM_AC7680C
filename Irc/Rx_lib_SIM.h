@@ -2,8 +2,8 @@
 #ifndef _RX_LIB_SIM_H_
 #define _RX_LIB_SIM_H_
 
-#include "stm32f1xx_hal.h"
-#include "string.h"  
+
+#include "lib_sim.h"
 #include "setup_sim.h"
 char com[50];
 char buffer_response[BUFFER_SIZE];
