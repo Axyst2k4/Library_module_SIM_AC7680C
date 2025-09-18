@@ -27,7 +27,10 @@ typedef struct{
 	uint8_t dma_buffer_idx; //0=A,1=B
     uint8_t result_data[BUFFER_SIZE][BUFFER_SIZE];
     int response_count;
-    ResponseType_e index_cmd[100]; 
+    ResponseType_e index_cmd[100];
+    
+    
+    
     volatile uint32_t tickCount;
     volatile uint32_t timeset_count;
     

@@ -14,5 +14,6 @@
 #define PHONE_NUMBER "0000000000"
 char com[256]; 
 
-void Lib_SIM_Setup();
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
+int g_state_count;
+
+UART_HandleTypeDef* g_huart_processing = NULL;

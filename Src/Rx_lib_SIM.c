@@ -51,13 +51,13 @@ void Receiver_IRQHandler(void)
 
 int Filter_Data(uint8_t * input,uint8_t output_tokens[][BUFFER_SIZE], int max_tokens)
 {
+    int token_count = 0;
+    const char* current_pos = input;
     //check NUll
     if (!input || !output_tokens) {
         return 0;
     }
     //
-    int token_count = 0;
-    const char* current_pos = input;
 
     while (*current_pos != '\0' && token_count < max_tokens){
         //Kiểm tra vị trí con trỏ
@@ -128,7 +128,7 @@ ResponseType_e Check_Type_Response(const char* token)
     memset(g_receiver.buffer_A, 0, sizeof(g_receiver.buffer_A));
     memset(g_receiver.result_data, 0, sizeof(g_receiver.result_data));
   }
-/*===================================================================================*/
+/*===================================================================================
  
 void SysTick_Init(volatile uint32_t set_time) {
     g_receiver.tickCount = 0;
@@ -152,46 +152,85 @@ void SysTick_Init(volatile uint32_t set_time) {
     
     }
 }
-int Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time, UART_HandleTypeDef* huart){
+
+void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time, UART_HandleTypeDef* huart){
     SysTick_Init(set_time);
     if (g_receiver.response_count !=0){ //response not correct
         for(int i = 0; i < g_receiver.response_count;i++){
             if(g_receiver.index_cmd[i] == response_correct ){
-                return 0;
+                return ;
             } else if( i == (g_receiver.response_count-1)){ 
-                g_state = STATE_ERROR;
-                return 10;
+                g_state_setup = STATE_ERROR;
+                return;
             }
         }
     } else { //Timeout
-        g_state = STATE_ERROR;
-        return 10;
+        g_state_setup = STATE_ERROR;
+    }
+}
+
+======================================================================================*/
+
+
+
+
+
+
+uint32_t g_timeout_start_time;
+void Timeout_Start(void)
+{
+    g_timeout_start_time = HAL_GetTick();
+}
+int Is_Timeout(uint32_t RESPONSE_TIMEOUT_MS)
+{
+    if ((HAL_GetTick() - g_timeout_start_time) > RESPONSE_TIMEOUT_MS)
+    {
+        return 1; 
+    }
+    return 0; 
+}
+void Wait_Response( ResponseType_e *response_correct, volatile uint32_t set_time, UART_HandleTypeDef* huart){
+    Timeout_Start();
+    while(1){
+    if (g_receiver.response_count !=0){ //response not correct
+        for(int i = 0; i < g_receiver.response_count;i++){
+            if(g_receiver.index_cmd[i] == response_correct ){
+                break;
+            } else if( i == (g_receiver.response_count-1)){ 
+                g_state_setup = STATE_ERROR;
+                break;
+            }
+        }
+    } else if (Is_Timeout(set_time))
+        {
+            g_state_setup = STATE_ERROR;
+            break; 
+        }
     }
 }
 
 
 
 
-bool handle_Default(const char* token) {
-	return true;
-}
-bool handle_No_data(const char* token) {
-    if (strcmp(token,"> ")==0 || strcmp(token,"OK")==0 || strcmp(token,"ERROR")==0){
-    ouput_data.no_data.index = 0;
-    return true;
-    } 
-    ouput_data.no_data.index = 1;
-	return false;
-}
 
-bool handle_CMQTTDISC(const char* token) {
-    sscanf(token, "+CMQTTDISC: %d,%d",&ouput_data.CMQTT_data.client_index,&ouput_data.CMQTT_data.disc_state);
-	return true;
-}
-bool handle_CMQTTSTART(const char* token) {
-    sscanf(token, "+CMQTTSTART: %d",&ouput_data.CMQTTSTART_data.index);
-	return true;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 bool handle_CMQTTCONNECT(const char* token) {
     sscanf(token, "+CMQTTCONNECT: %d,%d",&ouput_data.CMQTTCONNECT_data.index,&ouput_data.CMQTTCONNECT_data.state);
 	return true;

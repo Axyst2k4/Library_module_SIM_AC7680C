@@ -145,7 +145,7 @@ typedef enum {
 typedef void (*ResponseHandler_t)(const char* token);
 
 typedef struct {
-    const char* str_to_compare; // Chuỗi cần so sánh
+    const char* str_to_compare; 
     ResponseType_e    type;
     CmpType_e         cmp_type;
     ResponseHandler_t handler
