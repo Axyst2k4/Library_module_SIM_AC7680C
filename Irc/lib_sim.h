@@ -4,22 +4,87 @@
 #include "stdio.h"
 #include <string.h>
 
-// ==================================================RRECEIVER===================================================================
-void Lib_SIM_Setup(GenericReceiver_t* receiver, UART_HandleTypeDef* huart, Receiver_Callback_t data_handler_callback); //gọi ở main khi khởi động
-void Receiver_IRQHandler(GenericReceiver_t* receiver); //goi ham nay o ham ISR
-void Send_SMS(char*phone);
-void Send_broker(UART_HandleTypeDef* huart,const char* payload);
-// ==================================================RRECEIVER===================================================================
+// ==================================================GLOBAL===================================================================
+void Lib_SIM_Setup(GenericReceiver_t* receiver, UART_HandleTypeDef* huart, Receiver_Callback_t callback)
+void Receiver_IRQHandler(GenericReceiver_t* receiver); 
+void Send_data_broker(UART_HandleTypeDef* huart,  const char* topic,const char* payload);
+void Send_message_SMS(UART_HandleTypeDef* huart, char* phone, const char* message);
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+// ==================================================DEFINE===================================================================
 
 
 #define MY_UART_BAUDRATE    115200
 #define BUFFER_SIZE      	256
 #define MAX_TOKENS			100
+#define pub_timeout 60
+#define client_index 0
 
 
+
+
+
+
+
+
+
+
+
+
+
+int g_tx_complete =0;
 // ==================================================RRECEIVER===================================================================
-//
 
+typedef enum {
+    STATE_IDLE,                   
+	STATE_ERROR,
+    //connect mqtt
+    STATE_MQTT_1,       
+	RESPONSE_MQTT_1,
+    STATE_MQTT_2,        
+	RESPONSE_MQTT_2,  
+	STATE_MQTT_3,
+	RESPONSE_MQTT_3,
+	DONE_CONNECT_MQTT,
+    // connect sms
+    STATE_SMS_1,       
+	RESPONSE_SMS_1,
+    STATE_SMS_2,        
+	RESPONSE_SMS_2,  
+    DONE_CONNECT_SMS,
+	//send broker
+    STATE_SENDBROKER_1,       
+	RESPONSE_SENDBROKER_1,
+    STATE_SENDBROKER_2,
+    RESPONSE_SENDBROKER_2, 
+	STATE_SENDBROKER_3,  
+    RESPONSE_SENDBROKER_3,
+    STATE_SENDBROKER_4,  
+    RESPONSE_SENDBROKER_4,
+    STATE_SENDBROKER_5,  
+    RESPONSE_SENDBROKER_5,
+    DONE_SENDBROKER,
+	// send sms
+	STATE_SENDSMS_1,
+	RESPONSE_SENDSMS_1,
+    STATE_SENDSMS_2,
+	RESPONSE_SENDSMS_2,
+	STATE_SENDSMS_3,
+	DONE_SENDSMS,
+	
+	// setup
+	STATE_INIT_UART,
+	STATE_CONNECT_MQTT,
+	STATE_CONNECT_SMS,
+	DONE_SETUP,
+
+} SimMachineState_t;
+
+// Khai báo biến trạng thái
+SimMachineState_t g_state = STATE_IDLE;
+SimMachineState_t g_state_setup = STATE_IDLE;
+SimMachineState_t g_state_send_broker = STATE_IDLE;
+SimMachineState_t g_state_send_SMS = STATE_IDLE;
+//
 typedef struct{
     int status;
     char command;
@@ -64,11 +129,12 @@ typedef enum {
     RESPONSE_TYPE_CMGW      = 22,      // AT+CMGW
     RESPONSE_TYPE_CMGRD     = 23,      // AT+CMGRD
     RESPONSE_TYPE_CMGSEX    = 24,      // AT+CMGSEX
-    RESPONSE_TYPE_CMSSEX    = 25       // AT+CMSSEX
+    RESPONSE_TYPE_CMSSEX    = 25 ,      // AT+CMSSEX
 	// phản hồi lệnh broker
-    RESPONSE_TYPE_CMQTTDISC = 26       //AT+CMQTTDISC
-    RESPONSE_TYPE_CMQTTSTART = 27      //AT+CMQTTSTART
-    RESPONSE_TYPE_CMQTTCONNECT = 28     //AT+CMQTTCONNECT
+    RESPONSE_TYPE_CMQTTDISC = 26,       //AT+CMQTTDISC
+    RESPONSE_TYPE_CMQTTSTART = 27 ,     //AT+CMQTTSTART
+    RESPONSE_TYPE_CMQTTCONNECT = 28 ,    //AT+CMQTTCONNECT
+    RESPONSE_TYPE_CMQTTPUB,
 } ResponseType_e;
 
 typedef enum {
@@ -115,7 +181,8 @@ static const ResponseMapping_t response_table[] = {
     //broker
     {"+CMQTTDISC:",    RESPONSE_TYPE_CMQTTDISC,      CMP_PREFIX, handle_CMQTTDISC},
     {"+CMQTTSTART:",    RESPONSE_TYPE_CMQTTSTART,      CMP_PREFIX, handle_CMQTTSTART},
-    {"+CMQTTCONNECT:",    RESPONSE_TYPE_CMQTTCONNECT,      CMP_PREFIX, handle_CMQTTCONNECT}
+    {"+CMQTTCONNECT:",    RESPONSE_TYPE_CMQTTCONNECT,      CMP_PREFIX, handle_CMQTTCONNECT},
+    {"+CMQTTPUB:",    RESPONSE_TYPE_CMQTTPUB,      CMP_PREFIX, handle_No_data}
 };
 
 //response_handler_table[response_type](current_token); cách dùng trong maim
